@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>射氣球小遊戲</title>
+	<!-- <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+	<script src="game.js"></script> -->
+</head>
+<body>
+	<canvas id="gameCanvas" width="640" height="480"></canvas>
+    <script>
+        var canvas = document.getElementById("gameCanvas");
+var ctx = canvas.getContext("2d");
+
+var player = {
+	x: 50,
+	y: canvas.height/2,
+	width: 20,
+	height: 20,
+	speed: 5
+};
+
+var arrows = [];
+var balloons = [];
+
+var score = 0;
+
+var keys = {};
+
+document.addEventListener("keydown", function(e) {
+	keys[e.keyCode] = true;
+});
+
+document.addEventListener("keyup", function(e) {
+	keys[e.keyCode] = false;
+	if (e.keyCode === 32) {
+		addArrow();
+	}
+});
+
+function addArrow() {
+	var arrow = {
+		x: player.x + player.width,
+		y: player.y + player.height/2 - 1,
+		speed: 10
+	};
+	arrows.push(arrow);
+}
+
+function addBalloon() {
+	var balloon = {
+		x: canvas.width + 50,
+		y: Math.random() * (canvas.height - 50),
+		radius: 25,
+		speed: Math.random() * 3 + 1
+	};
+	balloons.push(balloon);
+}
+
+function update() {
+	// 更新玩家位置
+	if (keys[38] && player.y > 0) {
+		player.y -= player.speed;
+	}
+	if (keys[40] && player.y < canvas.height - player.height) {
+		player.y += player.speed;
+	}
+
+	// 更新箭矢位置
+	for (var i = 0; i < arrows.length; i++) {
+		var arrow = arrows[i];
+		arrow.x += arrow.speed;
+		if (arrow.x > canvas.width) {
+			arrows.splice(i, 1);
+			i--;
+		}
+	}
+
+	// 更新氣球位置
+	for (var i = 0; i < balloons.length; i++) {
+		var balloon = balloons[i];
+		balloon.x -= balloon.speed;
+		if (balloon.x < -balloon.radius) {
+			balloons.splice(i, 1);
+			i--;
+		}
+	}
+
+	// 檢查箭矢是否擊中氣球
+	for (var i = 0; i < balloons.length; i++) {
+		var balloon = balloons[i];
+		for (var j = 0; j < arrows.length; j++) {
+			var arrow = arrows[j];
+			if (Math.sqrt(Math.pow(balloon.x - arrow.x, 2) + Math.pow(balloon.y - arrow.y, 2)) < balloon.radius) {
+				balloons.splice(i, 1);
+				i--;
+				arrows.splice(j, 1);
+				j--;
+				score++;
+			}
+		}
+	}
+
+	// 每隔一定時間添加一  個新的氣球
+	if (Math.random() < 0.01) {
+		addBalloon();
+	}
+
+    
+// 繪製遊戲場景
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+// 繪製玩家
+ctx.fillStyle = "blue";
+ctx.fillRect(player.x, player.y, player.width, player.height);
+
+// 繪製箭矢
+ctx.fillStyle = "red";
+for (var i = 0; i < arrows.length; i++) {
+	var arrow = arrows[i];
+	ctx.fillRect(arrow.x, arrow.y, 10, 2);
+}
+
+// 繪製氣球
+ctx.fillStyle = "green";
+for (var i = 0; i < balloons.length; i++) {
+	var balloon = balloons[i];
+	ctx.beginPath();
+	ctx.arc(balloon.x, balloon.y, balloon.radius, 0, 2*Math.PI);
+	ctx.fill();
+}
+
+// 繪製分數
+ctx.fillStyle = "black";
+ctx.font = "20px Arial";
+ctx.fillText("Score: " + score, 10, 25);
+
+// 繼續遊戲循環
+requestAnimationFrame(update);
+}
+
+// 開始遊戲循環
+requestAnimationFrame(update);
+
+
+
+    </script>
+
+</body>
+</html>

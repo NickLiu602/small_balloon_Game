@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="https://code.createjs.com/1.0.0/tweenjs.min.js"></script>
+    <script src="https://code.createjs.com/1.0.0/soundjs.min.js"></script>
+  </head>
+  <body>
+    <div class="world">
+      <div class="player"></div>
+      <div class="score"></div>
+      <div class="time"></div>
+      <div class="buttonDiv">
+        <button class="gamePlay"></button>
+      </div>
+    </div>
+
+    <script>
+
+      var arr = Array.from({ length: 10 }, (v, i) => i);
+      console.log(arr);
+      arr.forEach((v, i) => {
+        if ([3, 5].includes(i)) {
+          console.log("remove index", i);
+          console.log("before", arr.join());
+          arr.splice(i, 1);
+          console.log("after", arr.join());
+        }
+      });
+
+      let random = (x) => {
+        return Math.floor(Math.random() * x);
+      };
+      let isKeyDown = false;
+      let direction = null;
+      let player = {
+        width: 50,
+        height: 70,
+        x: 0,
+        y: 30,
+        speed: 10,
+      };
+      let arrows = [];
+      let arrow = {
+        x: 450,
+        y: 60,
+        speed: 5,
+        width: 50,
+        height: 10,
+      };
+      let balloons = [];
+      let balloon = {
+        width: 25,
+        height: 50,
+        speed: "",
+        x: "",
+        y: 640,
+        isCollided: false,
+        outOfRange: false,
+        image: [
+          "./pooyan_asset/img/balloon/balloon_blue.png",
+          "./pooyan_asset/img/balloon/balloon_green.png",
+          "./pooyan_asset/img/balloon/balloon_purple.png",
+          "./pooyan_asset/img/balloon/balloon_red.png",
+          "./pooyan_asset/img/balloon/balloon_yellow.png",
+        ],
+      };
+      let arrowShoot = false;
+      let elWorld = document.querySelector(".world");
+      let elPlayer = document.querySelector(".player");
+      let elScore = document.querySelector(".score");
+      let elTime = document.querySelector(".time");
+      let intervalId = null;
+      let score = 0;
+      let time = 60;
+      elScore.innerHTML = `Score：${score}`;
+      elTime.innerHTML = `Time：${time}`;
+      let loadInt = 0;
+      let sounds = [
+        { src: "./pooyan_asset/img/bg拷貝.mp3", id: "bg" },
+        { src: "./pooyan_asset/img/coin拷貝.mp3", id: "crash" },
+        { src: "./pooyan_asset/img/play拷貝.mp3", id: "play" },
+      ];
+      createjs.Sound.alternateExtensions = ["mp3"];
+      createjs.Sound.registerSounds(sounds, "/");
+
+      class Balloon {
+        constructor(element, data) {
+          this.element = element;
+          this.speed = data.speed;
+          this.y = data.y;
+          this.x = data.x;
+          this.isCollided = data.isCollided;
+          this.width = data.width;
+          this.height = data.height;
+          this.outOfRange = data.outOfRange;
+        }
+        rise() {
+          this.y -= this.speed;
+          this.element.style.top = this.y + "px";
+        }
+        bomb() {
+          this.element.classList.add("balloonAnimated");
+        }
+      }
+
+      class Arrow {
+        constructor(element, data) {
+          this.element = element;
+          this.speed = data.speed;
+          this.x = data.x;
+          this.y = data.y;
+          this.width = data.width;
+          this.height = data.height;
+        }
+        shoot() {
+          this.x -= this.speed;
+          this.element.style.left = this.x + "px";
+        }
+      }
+
+      function tickFn() {
+        if (!isKeyDown) return;
+        player.y += player.speed * direction;
+        elPlayer.style.top = player.y + "px";
+        arrow.y += player.speed * direction;
+      }
+
+      function keyDownMoveFn(e) {
+        if (isKeyDown) return;
+        if (e.code === "ArrowUp" || e.code === "ArrowDown") {
+          isKeyDown = true;
+          direction = e.code === "ArrowUp" ? -1 : 1;
+        }
+      }
+      function keyUpMoveFn() {
+        isKeyDown = false;
+      }
+      function creatBalloon() {
+        balloon.speed = random(2) + 0.5;
+        balloon.x = random(400);
+        let elBalloon = document.createElement("div");
+        elBalloon.classList.add("balloon");
+        elBalloon.style.backgroundImage = `url(${balloon.image[random(4)]})`;
+        elBalloon.style.position = "absolute";
+        elBalloon.style.width = balloon.width + "px";
+        elBalloon.style.height = balloon.height + "px";
+        elBalloon.style.left = balloon.x + "px";
+        elBalloon.style.top = balloon.y + "px";
+        elWorld.appendChild(elBalloon);
+        let balloonItem = new Balloon(elBalloon, balloon);
+        balloons.push(balloonItem);
+      }
+      function createArrow() {
+        let elementArrow = document.createElement("div");
+        elementArrow.classList.add("arrow");
+        elementArrow.style.left = arrow.x + "px";
+        elementArrow.style.top = arrow.y + "px";
+        elWorld.appendChild(elementArrow);
+        let arrowItem = new Arrow(elementArrow, arrow);
+        arrows.push(arrowItem);
+      }
+      function shootKeyDown(e) {
+        if (arrowShoot === false) return;
+        if (e.code === "Space") {
+          createArrow();
+          arrowShoot = false;
+        }
+      }
+      function shootKeyUp(e) {
+        if (arrowShoot === true) return;
+
+        if (e.code === "Space") {
+          clearInterval(intervalId);
+          intervalId = setInterval(() => {
+            for (let i = 0; i < arrows.length; i++) {
+              arrows[i].shoot();
+              if (arrows[i].x < -300) {
+                console.log("飄出去的氣球", i);
+                arrows[i].element.remove();
+                arrows.splice(i, 1);
+                console.log("移除的氣球", i);
+              }
+              for (let j = 0; j < balloons.length; j++) {
+                if (
+                  balloons[j].x < arrows[i].x + arrows[i].width &&
+                  balloons[j].x + balloons[j].width > arrows[i].x &&
+                  balloons[j].y < arrows[i].y + arrows[i].height &&
+                  balloons[j].height + balloons[j].y > arrows[i].y
+                ) {
+                  crashAudio = createjs.Sound.play("crash");
+                  crashAudio.volume = 0.5;
+
+                  balloons[j].isCollided = true;
+                  balloons[j].bomb();
+
+                  arrows[i].element.remove(); // 移除箭矢
+                  arrows.splice(i, 1);
+
+                  score += 10; // 加分
+                  elScore.innerHTML = `Score：${score}`;
+
+                  break; // 如果一根箭矢碰到了多個氣球，只處理第一個碰到的氣球
+                }
+              }
+            }
+          }, 10);
+          arrowShoot = true;
+        }
+      }
+
+      let createBalloon;
+      let balloonRise;
+      setInterval(() => {
+        for (let i = 0; i < balloons.length; i++) {
+          if (balloons[i].isCollided) {
+            balloons[i].element.remove(); // 移除氣球
+            balloons.splice(i, 1);
+          }
+        }
+      }, 300);
+      function balloonStar() {
+        createBalloon = setInterval(() => {
+          creatBalloon();
+          time -= 1;
+          elTime.innerHTML = `Time：${time}`;
+          if (time === 0) {
+            let elButton = document.querySelector(".gamePlay");
+            elButton.style.display = "flex";
+            elButton.style.backgroundImage =
+              "url('./pooyan_asset/img/gameover拷貝.png')";
+            elButton.style.width = "74%";
+            clearInterval(createBalloon);
+            clearInterval(balloonRise);
+          }
+          console.log("氣球陣列", balloons);
+          console.log("弓箭陣列", arrows);
+        }, 1000);
+      }
+      function balloonUp() {
+        balloonRise = setInterval(() => {
+          for (let i = 0; i < balloons.length; i++) {
+            balloons[i].rise();
+            if (balloons[i].y < -500) {
+              balloons[i].outOfRange = true;
+              balloons[i].element.remove();
+              balloons.splice(i, 1);
+            }
+          }
+        }, 10);
+      }
+      document.querySelector(".gamePlay").addEventListener("click", () => {
+        playAudio = createjs.Sound.play("play");
+        playAudio.volume = 0.5;
+
+        bgAudio = createjs.Sound.play("bg");
+        bgAudio.volume = 0.5;
+
+        document.querySelector(".gamePlay").style.display = "none";
+        createjs.Ticker.addEventListener("tick", tickFn);
+        document.addEventListener("keydown", keyDownMoveFn);
+        document.addEventListener("keyup", keyUpMoveFn);
+        document.addEventListener("keydown", shootKeyDown);
+        document.addEventListener("keyup", shootKeyUp);
+        balloonStar();
+        balloonUp();
+      });
+    </script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        background-color: white;
+      }
+      .world {
+        margin: 0 auto;
+        margin-top: 20px;
+        width: 500px;
+        height: 650px;
+        border: 2px double black;
+        overflow: hidden;
+        background-image: url("./pooyan_asset/img/bg拷貝.png");
+        background-repeat: no-repeat;
+        background-size: cover;
+        position: relative;
+      }
+      .player {
+        background-image: url("pooyan_asset/img//bow.png");
+        background-color: transparent;
+        position: absolute;
+        width: 50px;
+        height: 70px;
+        left: 460px;
+        top: 30px;
+      }
+      .balloon {
+        background-color: transparent;
+        background-size: cover;
+        background-position: 0 0;
+      }
+      .balloonAnimated {
+        animation: explode 0.01s steps(5) forwards;
+      }
+      @keyframes explode {
+        from {
+          background-position: 0 0;
+        }
+        to {
+          background-position: -127px 0;
+        }
+      }
+      .arrow {
+        width: 50px;
+        height: 10px;
+        position: absolute;
+        background-image: url("./pooyan_asset/img/arrow.png");
+        background-color: transparent;
+      }
+      .score {
+        position: absolute;
+        background-color: transparent;
+      }
+      .time {
+        position: absolute;
+        background-color: transparent;
+        left: 400px;
+      }
+      .buttonDiv {
+        width: 100%;
+        height: 50px;
+        background-color: transparent;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .gamePlay {
+        display: flex;
+        width: 200px;
+        height: 50px;
+        background-image: url("./pooyan_asset/img/play拷貝.png");
+        background-color: transparent;
+        background-repeat: no-repeat;
+        border: none;
+      }
+    </style>
+  </body>
+</html>
